@@ -1,73 +1,45 @@
 #!/bin/bash
-#
-# PixLive Bot - Быстрый запуск локально
-# Использование: bash scripts/run.sh
-#
-
 set -e
 
-# Цвета
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
-}
-
-log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
-}
-
-# Определить директорию проекта
+# Простой скрипт для локального запуска в режиме разработки
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-cd "$INSTALL_DIR" || log_error "Не удалось перейти в директорию $INSTALL_DIR"
+cd "$PROJECT_DIR"
 
-# Проверить .env
-if [ ! -f ".env" ]; then
-    log_warning ".env файл не найден"
-    if [ -f ".env.example" ]; then
-        log_info "Создаю .env из .env.example"
-        cp .env.example .env
-        log_warning "⚠️  Отредактируй .env:"
-        log_warning "   nano .env"
-        exit 1
-    fi
+echo "🚀 PixLive Bot - Local Development"
+echo "Project: $PROJECT_DIR"
+echo ""
+
+# Проверяем Python
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Python3 не установлен"
+    exit 1
 fi
 
-# Проверить виртуальное окружение
+# Создаём виртуальное окружение если нужно
 if [ ! -d "venv" ]; then
-    log_info "Создание виртуального окружения..."
+    echo "📦 Создаём виртуальное окружение..."
     python3 -m venv venv
 fi
 
-# Активировать venv
-log_info "Активация виртуального окружения..."
+# Активируем окружение
 source venv/bin/activate
 
-# Установить зависимости если нужно
-if ! python3 -c "import discord" 2>/dev/null; then
-    log_info "Установка зависимостей..."
-    pip install -r requirements.txt -q
-fi
+# Обновляем зависимости
+echo "📥 Обновляем зависимости..."
+pip install -q -r requirements.txt
 
-# Проверить конфиг
-log_info "Проверка конфигурации..."
-python3 check_config.py || exit 1
+# Запускаем проверку конфига
+echo ""
+python3 scripts/check_config.py
 
+# Запускаем бота
 echo ""
-log_success "Все готово к запуску!"
-echo ""
-echo "Запускаю PixLive Bot..."
-echo "(Нажми Ctrl+C для остановки)"
+echo "🎬 Запускаем бота..."
+echo "Нажмите Ctrl+C для остановки"
 echo ""
 
-# Запустить бота
 python3 main.py
+
+
