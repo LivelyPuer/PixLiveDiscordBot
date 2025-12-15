@@ -3,9 +3,9 @@ import logging
 from bot.config import cfg
 from bot.state import StateStore
 from services.deviantart.service import DeviantArtService
-from discord_bot import DiscordPoster
-from telegram_admin import TelegramAdmin
-from service_manager import ServiceManager
+from bot.discord_bot import DiscordPoster
+from bot.telegram_admin import TelegramAdmin
+from services.service_manager import ServiceManager
 
 
 logging.basicConfig(level=logging.INFO)

@@ -6,6 +6,10 @@
 import asyncio
 import sys
 import os
+
+# Добавить родительскую директорию в путь
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from dotenv import load_dotenv
 
 load_dotenv()
