@@ -1,0 +1,99 @@
+import asyncio
+import logging
+import discord
+from bot.config import cfg
+
+
+logger = logging.getLogger(__name__)
+
+
+class DiscordPoster:
+    def __init__(self, services, state):
+        intents = discord.Intents.default()
+        self.bot = discord.Client(intents=intents)
+        self.services = services
+        self.state = state
+        self._bot_ready = asyncio.Event()
+
+        @self.bot.event
+        async def on_ready():
+            logger.info(f"Discord client ready as {self.bot.user}")
+            self._bot_ready.set()
+
+    async def start(self):
+        """Start Discord bot and services concurrently."""
+        # Start Discord bot in background task
+        bot_task = asyncio.create_task(self.bot.start(cfg.discord_token))
+        
+        try:
+            # Wait for bot to be ready
+            await asyncio.wait_for(self._bot_ready.wait(), timeout=30)
+            logger.info("Discord bot connected, starting services")
+            
+            # Start service polling tasks
+            service_tasks = [
+                asyncio.create_task(self._run_service(s)) for s in self.services
+            ]
+            
+            # Wait for bot or services to fail
+            await asyncio.gather(bot_task, *service_tasks)
+        except asyncio.TimeoutError:
+            logger.error("Discord bot failed to connect within 30 seconds")
+            await self.bot.close()
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in Discord bot: {e}", exc_info=True)
+            await self.bot.close()
+            raise
+
+    async def _run_service(self, service):
+        """Run a single service with polling."""
+        async def getter(k):
+            return await self.state.get(k, None)
+
+        async def setter(k, v):
+            await self.state.set(k, v)
+
+        async def on_new(service_obj, deviation):
+            # Extract data from DeviantArt API deviation object
+            try:
+                title = deviation.get("title", "No title")
+                url = deviation.get("url", "#")
+                thumbs = deviation.get("thumbs", [])
+                # thumbs is a list of dicts with 'src', 'height', 'width'
+                thumb_url = None
+                if thumbs:
+                    thumb_obj = thumbs[0]
+                    if isinstance(thumb_obj, dict):
+                        thumb_url = thumb_obj.get("src")
+                    else:
+                        thumb_url = str(thumb_obj)
+                
+                # Wait for bot to be ready
+                await self._bot_ready.wait()
+                
+                # send message to channel
+                channel = self.bot.get_channel(cfg.discord_channel_id)
+                if channel is None:
+                    # Try fetch channel
+                    channel = await self.bot.fetch_channel(cfg.discord_channel_id)
+                
+                # Build embed message
+                embed = discord.Embed(
+                    title=title,
+                    url=url,
+                    description=f"New post from {service_obj.username}",
+                    color=discord.Color.blue()
+                )
+                if thumb_url:
+                    embed.set_image(url=thumb_url)
+                
+                await channel.send(embed=embed)
+                logger.info(f"Posted: {title} by {service_obj.username}")
+                
+                # increment analytics
+                await self.state.update("analytics:posts_sent", lambda v: (v or 0) + 1)
+            except Exception as e:
+                logger.error(f"Error posting to Discord: {e}", exc_info=True)
+
+        await service.start(getter, setter, on_new)
