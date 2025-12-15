@@ -115,6 +115,12 @@ else
             adduser --system --shell /bin/bash "$BOT_USER" 2>/dev/null || true
         fi
     fi
+    
+    # Даём права доступа на папку проекта
+    echo -e "${YELLOW}Даём права доступа на папку проекта...${NC}"
+    chown -R "$BOT_USER:$BOT_USER" "$PROJECT_DIR"
+    chmod -R 755 "$PROJECT_DIR"
+    
     echo -e "${YELLOW}Пользователь: $BOT_USER${NC}"
 fi
 
