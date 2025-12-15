@@ -168,29 +168,6 @@ systemctl enable pixlive-bot
 echo -e "${GREEN}✅ Автозапуск включен${NC}"
 
 # ============================================================================
-# 5. ЗАПУСК ПРОГРАММЫ
-# ============================================================================
-echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}🎬 Запуск программы${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-echo -e "${YELLOW}Перезапускаем сервис pixlive-bot...${NC}"
-systemctl restart pixlive-bot
-
-sleep 2
-
-echo -e "${YELLOW}Проверяем статус...${NC}"
-if systemctl is-active --quiet pixlive-bot; then
-    echo -e "${GREEN}✅ Программа запущена успешно${NC}"
-else
-    echo -e "${RED}❌ Программа не запустилась${NC}"
-    echo -e "${YELLOW}Логи:${NC}"
-    journalctl -u pixlive-bot -n 20
-    exit 1
-fi
-
-# ============================================================================
 # ИТОГ
 # ============================================================================
 echo ""
@@ -198,13 +175,11 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${GREEN}✅ DEPLOYMENT УСПЕШЕН!${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "${YELLOW}📊 Статус:${NC}"
-systemctl status pixlive-bot --no-pager
-
+echo -e "${YELLOW}📋 Дальнейшие действия:${NC}"
+echo -e "  ${BLUE}systemctl start pixlive-bot${NC}        - Запустить бота"
+echo -e "  ${BLUE}systemctl status pixlive-bot${NC}       - Проверить статус"
+echo -e "  ${BLUE}journalctl -u pixlive-bot -f${NC}       - Смотреть логи"
 echo ""
-echo -e "${YELLOW}📋 Полезные команды:${NC}"
-echo -e "  ${BLUE}systemctl status pixlive-bot${NC}       - Статус сервиса"
-echo -e "  ${BLUE}journalctl -u pixlive-bot -f${NC}       - Логи в реальном времени"
-echo -e "  ${BLUE}systemctl restart pixlive-bot${NC}      - Перезапустить бота"
-echo -e "  ${BLUE}systemctl stop pixlive-bot${NC}         - Остановить бота"
+echo -e "${YELLOW}📝 Примечание:${NC}"
+echo -e "  Бот будет автоматически запущен при перезагрузке сервера"
 echo ""
