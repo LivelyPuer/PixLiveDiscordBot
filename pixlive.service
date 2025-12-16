@@ -1,0 +1,47 @@
+[Unit]
+Description=PixLive Discord Bot - Posts DeviantArt content to Discord
+After=network.target
+Documentation=https://github.com/LivelyPuer/PixLiveDiscordBot
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+# Service type
+Type=simple
+Restart=always
+RestartSec=10
+
+# User and working directory
+User=pixlive
+Group=pixlive
+WorkingDirectory=/opt/PixLiveDiscordBot
+
+# Execution
+ExecStart=/opt/PixLiveDiscordBot/venv/bin/python main.py
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONDONTWRITEBYTECODE=1"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pixlive
+
+# Security & isolation
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/PixLiveDiscordBot/data /opt/PixLiveDiscordBot/.env
+
+# Resource limits (optional, uncomment if needed)
+# CPUQuota=50%
+# MemoryLimit=512M
+
+# Timeouts
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
