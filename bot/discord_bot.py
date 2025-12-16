@@ -18,21 +18,32 @@ class DiscordPoster:
         self.service_manager = service_manager
         self._bot_ready = asyncio.Event()
         self.admin = None
+        self.posts_channel = None
 
         @self.bot.event
         async def on_ready():
             logger.info(f"✅ Discord client ready as {self.bot.user}")
-            # Initialize admin on first ready
+            # Initialize admin and posts channel on first ready
             if self.admin is None:
                 self.admin = DiscordAdmin(self.bot, self.state, self.service_manager)
                 await self.admin.initialize()
+            if self.posts_channel is None:
+                await self._initialize_posts_channel()
             self._bot_ready.set()
         
         @self.bot.event
         async def on_error(event, *args, **kwargs):
             logger.error(f"Discord event error in {event}: {args}, {kwargs}", exc_info=True)
 
-    async def start(self):
+    async def _initialize_posts_channel(self):
+        """Find posts channel by name across all guilds."""
+        for guild in self.bot.guilds:
+            for channel in guild.text_channels:
+                if channel.name == cfg.discord_posts_channel_name:
+                    self.posts_channel = channel
+                    logger.info(f"✅ Posts channel found: #{channel.name} in {guild.name}")
+                    return
+        logger.error(f"❌ Posts channel not found: {cfg.discord_posts_channel_name}")
         """Start Discord bot and services concurrently."""
         # Start Discord bot in background task
         bot_task = asyncio.create_task(self.bot.start(cfg.discord_token))
@@ -112,10 +123,10 @@ class DiscordPoster:
                 await self._bot_ready.wait()
                 
                 # send message to channel
-                channel = self.bot.get_channel(cfg.discord_channel_id)
+                channel = self.posts_channel
                 if channel is None:
-                    # Try fetch channel
-                    channel = await self.bot.fetch_channel(cfg.discord_channel_id)
+                    logger.error(f"Posts channel not available: {cfg.discord_posts_channel_name}")
+                    return
                 
                 # Build embed message
                 embed = discord.Embed(

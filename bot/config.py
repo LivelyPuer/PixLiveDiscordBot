@@ -8,7 +8,7 @@ load_dotenv()
 @dataclass
 class Config:
     discord_token: str = os.getenv("DISCORD_TOKEN", "")
-    discord_channel_id: int = int(os.getenv("DISCORD_CHANNEL_ID", "0"))
+    discord_posts_channel_name: str = os.getenv("DISCORD_POSTS_CHANNEL_NAME", "posts")
     discord_admin_channel_name: str = os.getenv("DISCORD_ADMIN_CHANNEL_NAME", "admin-logs")
     discord_admin_password: str = os.getenv("DISCORD_ADMIN_PASSWORD", "")
     poll_interval_seconds: int = int(os.getenv("POLL_INTERVAL_SECONDS", "60"))
