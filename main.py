@@ -4,7 +4,6 @@ from bot.config import cfg
 from bot.state import StateStore
 from services.deviantart.service import DeviantArtService
 from bot.discord_bot import DiscordPoster
-from bot.telegram_admin import TelegramAdmin
 from services.service_manager import ServiceManager
 
 
@@ -23,13 +22,8 @@ async def main():
     if not cfg.discord_channel_id or cfg.discord_channel_id == 0:
         logger.error("❌ DISCORD_CHANNEL_ID not set in .env")
         return
-
-    # Validate Telegram config
-    if not cfg.tg_bot_token:
-        logger.error("❌ TG_BOT_TOKEN not set in .env")
-        return
-    if not cfg.tg_admin_password:
-        logger.error("❌ TG_ADMIN_PASSWORD not set in .env")
+    if not cfg.discord_admin_password:
+        logger.error("❌ DISCORD_ADMIN_PASSWORD not set in .env")
         return
 
     # Validate DeviantArt config
@@ -60,16 +54,14 @@ async def main():
         svc_mgr.register(f"deviantart:{username}", da)
         logger.info(f"  → DeviantArt service for: {username}")
 
-    discord_poster = DiscordPoster(services, state)
-    telegram = TelegramAdmin(state, svc_mgr)
+    discord_poster = DiscordPoster(services, state, svc_mgr)
 
-    logger.info("🚀 Starting Discord and Telegram bots...")
+    logger.info("🚀 Starting Discord bot...")
     
-    # run discord and telegram concurrently
+    # run discord concurrently with services
     try:
         await asyncio.gather(
-            discord_poster.start(),
-            telegram.start()
+            discord_poster.start()
         )
     except KeyboardInterrupt:
         logger.info("⏹️ Shutting down...")

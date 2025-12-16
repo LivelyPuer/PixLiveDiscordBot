@@ -2,22 +2,30 @@ import asyncio
 import logging
 import discord
 from bot.config import cfg
+from bot.discord_admin import DiscordAdmin
 
 
 logger = logging.getLogger(__name__)
 
 
 class DiscordPoster:
-    def __init__(self, services, state):
+    def __init__(self, services, state, service_manager):
         intents = discord.Intents.default()
+        intents.message_content = True
         self.bot = discord.Client(intents=intents)
         self.services = services
         self.state = state
+        self.service_manager = service_manager
         self._bot_ready = asyncio.Event()
+        self.admin = None
 
         @self.bot.event
         async def on_ready():
             logger.info(f"✅ Discord client ready as {self.bot.user}")
+            # Initialize admin on first ready
+            if self.admin is None:
+                self.admin = DiscordAdmin(self.bot, self.state, self.service_manager)
+                await self.admin.initialize()
             self._bot_ready.set()
         
         @self.bot.event

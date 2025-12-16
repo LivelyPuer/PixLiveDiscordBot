@@ -31,6 +31,13 @@ class ServiceManager:
                 # starting will run loop; caller is responsible for awaiting
                 return True
         return False
+    
+    def is_paused(self, name: str) -> bool:
+        return self._paused.get(name, False)
 
     def list_names(self):
         return list(self._services.keys())
+    
+    @property
+    def services(self):
+        return self._services
