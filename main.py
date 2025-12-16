@@ -79,4 +79,18 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("⏹️  Shutting down...")
+    except TimeoutError as e:
+        logger.error(f"❌ Connection timeout: {e}")
+        logger.error("💡 Troubleshooting tips:")
+        logger.error("   1. Check your DISCORD_TOKEN is valid")
+        logger.error("   2. Verify network connectivity")
+        logger.error("   3. Check Discord service status")
+        logger.error("   4. Try increasing DISCORD_CONNECT_TIMEOUT if needed")
+        exit(1)
+    except Exception as e:
+        logger.error(f"❌ Unrecoverable error: {e}", exc_info=True)
+        exit(1)

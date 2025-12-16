@@ -17,8 +17,12 @@ class DiscordPoster:
 
         @self.bot.event
         async def on_ready():
-            logger.info(f"Discord client ready as {self.bot.user}")
+            logger.info(f"✅ Discord client ready as {self.bot.user}")
             self._bot_ready.set()
+        
+        @self.bot.event
+        async def on_error(event, *args, **kwargs):
+            logger.error(f"Discord event error in {event}: {args}, {kwargs}", exc_info=True)
 
     async def start(self):
         """Start Discord bot and services concurrently."""
@@ -26,8 +30,35 @@ class DiscordPoster:
         bot_task = asyncio.create_task(self.bot.start(cfg.discord_token))
         
         try:
-            # Wait for bot to be ready
-            await asyncio.wait_for(self._bot_ready.wait(), timeout=30)
+            logger.info("Attempting to connect to Discord...")
+            
+            # Wait for bot to be ready (increased timeout to 60 seconds)
+            ready_task = asyncio.create_task(self._bot_ready.wait())
+            
+            # Race between bot_task and ready event with timeout
+            done, pending = await asyncio.wait(
+                [bot_task, ready_task],
+                timeout=60,
+                return_when=asyncio.FIRST_EXCEPTION
+            )
+            
+            # Check if bot_task failed
+            if bot_task in done:
+                try:
+                    bot_task.result()
+                except Exception as e:
+                    logger.error(f"Discord bot connection failed: {e}", exc_info=True)
+                    await self.bot.close()
+                    raise
+            
+            # Check if ready event fired
+            if not self._bot_ready.is_set():
+                logger.error("Discord bot failed to connect within 60 seconds")
+                await self.bot.close()
+                if not bot_task.done():
+                    bot_task.cancel()
+                raise TimeoutError("Discord bot did not become ready within 60 seconds")
+            
             logger.info("Discord bot connected, starting services")
             
             # Start service polling tasks
@@ -37,8 +68,8 @@ class DiscordPoster:
             
             # Wait for bot or services to fail
             await asyncio.gather(bot_task, *service_tasks)
-        except asyncio.TimeoutError:
-            logger.error("Discord bot failed to connect within 30 seconds")
+        except asyncio.CancelledError:
+            logger.info("Discord bot startup cancelled")
             await self.bot.close()
             raise
         except Exception as e:
