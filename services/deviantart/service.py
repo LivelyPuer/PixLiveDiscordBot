@@ -89,6 +89,11 @@ class DeviantArtService:
         logger.info(f"Starting DeviantArt service for user: {self.username}")
 
         while self._running:
+            # Check for updated poll interval from state
+            current_interval = await state_getter("poll_interval_seconds")
+            if current_interval:
+                self.poll_interval = current_interval
+            
             last_ts = await state_getter(f"{self.username}:last_timestamp")
             try:
                 new_entries = await self.poll_once(last_ts)

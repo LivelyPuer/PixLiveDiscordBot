@@ -3,11 +3,14 @@ import logging
 from bot.config import cfg
 from bot.state import StateStore
 from services.deviantart.service import DeviantArtService
+from services.deviantart.service import DeviantArtService
 from bot.discord_bot import DiscordPoster
 from services.service_manager import ServiceManager
+from services.telegram.service import TelegramService
 
 
 logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -19,8 +22,8 @@ async def main():
     if not cfg.discord_token:
         logger.error("❌ DISCORD_TOKEN not set in .env")
         return
-    if not cfg.discord_channel_id or cfg.discord_channel_id == 0:
-        logger.error("❌ DISCORD_CHANNEL_ID not set in .env")
+    if not cfg.discord_posts_channel_name:
+        logger.error("❌ DISCORD_POSTS_CHANNEL_NAME not set in .env")
         return
     if not cfg.discord_admin_password:
         logger.error("❌ DISCORD_ADMIN_PASSWORD not set in .env")
@@ -33,6 +36,7 @@ async def main():
 
     # Parse DeviantArt usernames from config
     usernames = [u.strip() for u in cfg.deviantart_usernames.split(",") if u.strip()]
+    
     
     if not usernames:
         logger.error("❌ DEVIANTART_USERNAMES not configured. Set in .env (e.g., artist1,artist2)")
@@ -52,11 +56,29 @@ async def main():
         )
         services.append(da)
         svc_mgr.register(f"deviantart:{username}", da)
-        logger.info(f"  → DeviantArt service for: {username}")
+        logger.info(f"  → DeviantArt service initialized for: {username}")
 
-    discord_poster = DiscordPoster(services, state, svc_mgr)
+    # Initialize Telegram Service
+    discord_poster_ref = {}
+    async def tg_callback(payload):
+        if "poster" in discord_poster_ref:
+            await discord_poster_ref["poster"].on_telegram_post(payload)
+        else:
+            logger.warning("DiscordPoster not ready to receive Telegram post")
+
+    telegram_service = TelegramService(tg_callback)
+    svc_mgr.register("telegram", telegram_service)
+    logger.info("  → Telegram service initialized")
+
+    discord_poster = DiscordPoster(services, state, svc_mgr, telegram_service=telegram_service)
+    discord_poster_ref["poster"] = discord_poster
 
     logger.info("🚀 Starting Discord bot...")
+    logger.info(f"📝 Posts channel: {cfg.discord_posts_channel_name}")
+    logger.info(f"📋 Admin channel: {cfg.discord_admin_channel_name}")
+    logger.info(f"⏱️  Poll interval: {cfg.poll_interval_seconds}s")
+    
+    # run discord concurrently with services
     
     # run discord concurrently with services
     try:
