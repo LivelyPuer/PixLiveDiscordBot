@@ -65,6 +65,27 @@ check_root() {
     fi
 }
 
+# Исправление прав доступа
+fix_permissions() {
+    log_info "Исправление прав доступа..."
+    
+    # Создаем data если не существует
+    if [[ ! -d "$BOT_HOME/data" ]]; then
+        mkdir -p "$BOT_HOME/data"
+    fi
+
+    # Исправляем права на все файлы
+    chown -R "$BOT_USER:$BOT_USER" "$BOT_HOME"
+    chmod 755 "$BOT_HOME"
+    
+    # Специфично для .env (секреты)
+    if [[ -f "$BOT_HOME/.env" ]]; then
+        chmod 600 "$BOT_HOME/.env"
+    fi
+
+    log_success "Права доступа восстановлены"
+}
+
 # Определение OS и установка зависимостей
 install_dependencies() {
     log_title "Установка системных зависимостей"
@@ -250,8 +271,10 @@ enable_autostart() {
 
 # Запуск сервиса
 start_service() {
+start_service() {
     log_title "Запуск сервиса"
     
+    fix_permissions
     systemctl start "$SYSTEMD_SERVICE"
     sleep 2
     
@@ -275,6 +298,8 @@ stop_service() {
 # Перезагрузка сервиса
 restart_service() {
     log_title "Перезагрузка сервиса"
+    
+    fix_permissions
     systemctl restart "$SYSTEMD_SERVICE"
     sleep 2
     
