@@ -1,13 +1,17 @@
 import logging
 import asyncio
 import re
+import os
 from telegram import Update
 from telegram.ext import Application, ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.request import HTTPXRequest
 from bot.config import cfg
 from services.patreon.client import PatreonClient
 from utils.image import blur_image
 
+
 logger = logging.getLogger(__name__)
+
 
 class TelegramService:
     def __init__(self, discord_poster_callback):
@@ -42,12 +46,39 @@ class TelegramService:
         self.album_buffer = {} # media_group_id -> [messages]
         self.album_tasks = {} # media_group_id -> asyncio.Task
 
+
     async def start(self):
         if not cfg.tg_bot_token:
             logger.error("TG_BOT_TOKEN not set. TelegramService not starting.")
             return
 
-        self.app = ApplicationBuilder().token(cfg.tg_bot_token).build()
+        # Читаем прокси из переменной окружения
+        proxy_url = os.getenv("PROXY_URL")
+        
+        if proxy_url:
+            logger.info(f"✓ Telegram: using proxy")
+            
+            # Создаём HTTPXRequest с прокси
+            request = HTTPXRequest(
+                proxy_url=proxy_url,
+                connection_pool_size=8,
+                connect_timeout=30.0,
+                read_timeout=30.0,
+                write_timeout=30.0,
+                pool_timeout=30.0
+            )
+            
+            # Создаём Application с прокси
+            self.app = (
+                ApplicationBuilder()
+                .token(cfg.tg_bot_token)
+                .request(request)
+                .get_updates_request(request)
+                .build()
+            )
+        else:
+            logger.warning("⚠ Telegram: no proxy configured, direct connection")
+            self.app = ApplicationBuilder().token(cfg.tg_bot_token).build()
         
         # Handle channel posts with photos
         self.app.add_handler(MessageHandler(filters.ChatType.CHANNEL & filters.PHOTO, self.handle_post))
@@ -66,6 +97,7 @@ class TelegramService:
             await self.app.updater.stop()
             await self.app.stop()
             await self.app.shutdown()
+
 
     async def handle_post(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = update.channel_post
@@ -93,6 +125,7 @@ class TelegramService:
             self.album_buffer[gid] = [message]
             await self.process_group(gid)
 
+
     async def _schedule_processing(self, group_id: str):
         await asyncio.sleep(4) # Wait 4 seconds for all images
         await self.process_group(group_id)
@@ -101,6 +134,7 @@ class TelegramService:
             del self.album_buffer[group_id]
         if group_id in self.album_tasks:
             del self.album_tasks[group_id]
+
 
     async def process_group(self, group_id: str):
         if group_id not in self.album_buffer:
