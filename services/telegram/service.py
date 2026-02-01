@@ -58,22 +58,16 @@ class TelegramService:
         if proxy_url:
             logger.info(f"✓ Telegram: using proxy")
             
-            # Создаём HTTPXRequest с прокси
-            request = HTTPXRequest(
-                proxy_url=proxy_url,
-                connection_pool_size=8,
-                connect_timeout=30.0,
-                read_timeout=30.0,
-                write_timeout=30.0,
-                pool_timeout=30.0
-            )
-            
-            # Создаём Application с прокси
+            # ApplicationBuilder поддерживает прокси напрямую
             self.app = (
                 ApplicationBuilder()
                 .token(cfg.tg_bot_token)
-                .request(request)
-                .get_updates_request(request)
+                .proxy_url(proxy_url)  # Прокси для запросов
+                .get_updates_proxy_url(proxy_url)  # Прокси для обновлений
+                .connect_timeout(30.0)
+                .read_timeout(30.0)
+                .write_timeout(30.0)
+                .pool_timeout(30.0)
                 .build()
             )
         else:
@@ -90,7 +84,7 @@ class TelegramService:
         await self.app.start()
         
         await self.app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-        
+
     async def stop(self):
         if self.app:
             logger.info("Stopping Telegram Service...")
