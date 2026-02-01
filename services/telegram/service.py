@@ -1,10 +1,8 @@
 import logging
 import asyncio
 import re
-import os
 from telegram import Update
 from telegram.ext import Application, ApplicationBuilder, ContextTypes, MessageHandler, filters
-from telegram.request import HTTPXRequest
 from bot.config import cfg
 from services.patreon.client import PatreonClient
 from utils.image import blur_image
@@ -52,27 +50,7 @@ class TelegramService:
             logger.error("TG_BOT_TOKEN not set. TelegramService not starting.")
             return
 
-        # Читаем прокси из переменной окружения
-        proxy_url = os.getenv("PROXY_URL")
-        
-        if proxy_url:
-            logger.info(f"✓ Telegram: using proxy")
-            
-            # ApplicationBuilder поддерживает прокси напрямую
-            self.app = (
-                ApplicationBuilder()
-                .token(cfg.tg_bot_token)
-                .proxy_url(proxy_url)  # Прокси для запросов
-                .get_updates_proxy_url(proxy_url)  # Прокси для обновлений
-                .connect_timeout(30.0)
-                .read_timeout(30.0)
-                .write_timeout(30.0)
-                .pool_timeout(30.0)
-                .build()
-            )
-        else:
-            logger.warning("⚠ Telegram: no proxy configured, direct connection")
-            self.app = ApplicationBuilder().token(cfg.tg_bot_token).build()
+        self.app = ApplicationBuilder().token(cfg.tg_bot_token).build()
         
         # Handle channel posts with photos
         self.app.add_handler(MessageHandler(filters.ChatType.CHANNEL & filters.PHOTO, self.handle_post))
@@ -84,6 +62,7 @@ class TelegramService:
         await self.app.start()
         
         await self.app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        
 
     async def stop(self):
         if self.app:
